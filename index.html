@@ -1,0 +1,217 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Deadlock Prevention & Recovery Toolkit</title>
+  <link rel="stylesheet" href="css/style.css" />
+  <link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Rajdhani:wght@400;500;600;700&family=Exo+2:wght@300;400;600;800&display=swap" rel="stylesheet" />
+</head>
+<body>
+  <div class="bg-grid"></div>
+  <div class="scanline"></div>
+
+  <header class="site-header">
+    <div class="header-inner">
+      <div class="logo">
+        <span class="logo-icon">⬡</span>
+        <span class="logo-text">DEADLOCK<span class="accent">TOOLKIT</span></span>
+      </div>
+      <nav class="nav-tabs">
+        <button class="nav-btn active" data-tab="dashboard">Dashboard</button>
+        <button class="nav-btn" data-tab="banker">Banker's Algorithm</button>
+        <button class="nav-btn" data-tab="graph">Resource Graph</button>
+        <button class="nav-btn" data-tab="simulator">Simulator</button>
+        <button class="nav-btn" data-tab="recovery">Recovery</button>
+      </nav>
+      <div class="status-indicator">
+        <span class="status-dot" id="systemStatus"></span>
+        <span id="statusText">SAFE</span>
+      </div>
+    </div>
+  </header>
+
+  <main class="main-content">
+
+    <!-- DASHBOARD -->
+    <section class="tab-section active" id="tab-dashboard">
+      <div class="section-header">
+        <h1>System Overview</h1>
+        <p class="subtitle">Real-time resource allocation monitoring and deadlock detection</p>
+      </div>
+      <div class="stats-grid">
+        <div class="stat-card"><div class="stat-label">Processes</div><div class="stat-value" id="stat-processes">0</div><div class="stat-bar"><div class="stat-fill" id="fill-processes"></div></div></div>
+        <div class="stat-card"><div class="stat-label">Resources</div><div class="stat-value" id="stat-resources">0</div><div class="stat-bar"><div class="stat-fill" id="fill-resources"></div></div></div>
+        <div class="stat-card"><div class="stat-label">Allocated</div><div class="stat-value" id="stat-allocated">0</div><div class="stat-bar"><div class="stat-fill" id="fill-allocated" style="background:var(--yellow)"></div></div></div>
+        <div class="stat-card"><div class="stat-label">Available</div><div class="stat-value" id="stat-available">0</div><div class="stat-bar"><div class="stat-fill" id="fill-available" style="background:var(--green)"></div></div></div>
+      </div>
+      <div class="dashboard-grid">
+        <div class="panel">
+          <div class="panel-header"><span>SYSTEM STATE</span><span class="panel-badge" id="safeLabel">SAFE</span></div>
+          <div class="panel-body"><div id="safeSequenceDisplay" class="safe-seq-display"><p class="muted">Configure processes and resources in Banker's Algorithm tab to begin.</p></div></div>
+        </div>
+        <div class="panel">
+          <div class="panel-header"><span>EVENT LOG</span><button class="btn-ghost" onclick="clearLog()">CLEAR</button></div>
+          <div class="panel-body"><div id="eventLog" class="event-log"><div class="log-entry info">▶ Toolkit initialized. Ready for configuration.</div></div></div>
+        </div>
+      </div>
+      <div class="panel quick-start">
+        <div class="panel-header"><span>QUICK START PRESETS</span></div>
+        <div class="panel-body preset-grid">
+          <button class="preset-btn" onclick="loadPreset('classic')"><span class="preset-icon">📘</span><span class="preset-name">Classic Example</span><span class="preset-desc">5 processes, 3 resources — safe state</span></button>
+          <button class="preset-btn" onclick="loadPreset('deadlock')"><span class="preset-icon">🔴</span><span class="preset-name">Deadlock State</span><span class="preset-desc">4 processes in circular wait</span></button>
+          <button class="preset-btn" onclick="loadPreset('edge')"><span class="preset-icon">⚠️</span><span class="preset-name">Edge Case</span><span class="preset-desc">Near-deadlock, minimal resources</span></button>
+          <button class="preset-btn" onclick="loadPreset('large')"><span class="preset-icon">🧠</span><span class="preset-name">Large System</span><span class="preset-desc">6 processes, 4 resource types</span></button>
+        </div>
+      </div>
+    </section>
+
+    <!-- BANKER'S ALGORITHM -->
+    <section class="tab-section" id="tab-banker">
+      <div class="section-header">
+        <h1>Banker's Algorithm</h1>
+        <p class="subtitle">Configure resource allocation and run safety analysis</p>
+      </div>
+      <div class="banker-controls panel">
+        <div class="panel-header"><span>CONFIGURATION</span></div>
+        <div class="panel-body">
+          <div class="config-row">
+            <div class="config-field"><label>Number of Processes</label><div class="num-input-group"><button onclick="adjustCount('processes',-1)">−</button><input type="number" id="numProcesses" value="3" min="1" max="8"/><button onclick="adjustCount('processes',1)">+</button></div></div>
+            <div class="config-field"><label>Number of Resource Types</label><div class="num-input-group"><button onclick="adjustCount('resources',-1)">−</button><input type="number" id="numResources" value="3" min="1" max="6"/><button onclick="adjustCount('resources',1)">+</button></div></div>
+            <button class="btn-primary" onclick="generateTables()">GENERATE TABLES</button>
+          </div>
+        </div>
+      </div>
+      <div id="bankerTables" style="display:none">
+        <div class="tables-grid">
+          <div class="panel"><div class="panel-header"><span>TOTAL RESOURCES</span></div><div class="panel-body"><div id="totalResourcesTable"></div></div></div>
+          <div class="panel"><div class="panel-header"><span>AVAILABLE RESOURCES</span></div><div class="panel-body"><div id="availableTable" class="readonly-display"></div></div></div>
+        </div>
+        <div class="panel"><div class="panel-header"><span>MAXIMUM DEMAND MATRIX</span></div><div class="panel-body"><div id="maxMatrix" class="matrix-container"></div></div></div>
+        <div class="panel"><div class="panel-header"><span>ALLOCATION MATRIX</span></div><div class="panel-body"><div id="allocationMatrix" class="matrix-container"></div></div></div>
+        <div class="panel readonly"><div class="panel-header"><span>NEED MATRIX (Max − Allocation)</span><span class="panel-badge muted">READ-ONLY</span></div><div class="panel-body"><div id="needMatrix" class="matrix-container"></div></div></div>
+        <div class="action-row">
+          <button class="btn-primary large" onclick="runBankersAlgorithm()">▶ RUN SAFETY CHECK</button>
+          <button class="btn-secondary" onclick="randomizeValues()">⚄ RANDOMIZE</button>
+          <button class="btn-ghost" onclick="resetTables()">↺ RESET</button>
+        </div>
+        <div id="bankerResult" class="result-panel" style="display:none"></div>
+      </div>
+    </section>
+
+    <!-- RESOURCE GRAPH -->
+    <section class="tab-section" id="tab-graph">
+      <div class="section-header">
+        <h1>Resource Allocation Graph</h1>
+        <p class="subtitle">Visual representation of process-resource relationships</p>
+      </div>
+      <div class="graph-layout">
+        <div class="panel graph-panel">
+          <div class="panel-header"><span>ALLOCATION GRAPH</span><div class="graph-controls"><button class="btn-ghost" onclick="redrawGraph()">⟳ REFRESH</button><button class="btn-ghost" onclick="toggleGraphMode()">⇄ TOGGLE MODE</button></div></div>
+          <div class="panel-body">
+            <canvas id="graphCanvas"></canvas>
+            <div id="graphLegend" class="graph-legend">
+              <div class="legend-item"><span class="legend-circle process"></span>Process</div>
+              <div class="legend-item"><span class="legend-rect resource"></span>Resource</div>
+              <div class="legend-item"><span class="legend-arrow alloc"></span>Allocated</div>
+              <div class="legend-item"><span class="legend-arrow request"></span>Requesting</div>
+              <div class="legend-item"><span class="legend-circle deadlocked"></span>Deadlocked</div>
+            </div>
+          </div>
+        </div>
+        <div class="graph-sidebar">
+          <div class="panel"><div class="panel-header"><span>GRAPH INFO</span></div><div class="panel-body"><div id="graphInfo" class="graph-info-list"><p class="muted">Run analysis to see graph details.</p></div></div></div>
+          <div class="panel"><div class="panel-header"><span>CYCLE DETECTION</span></div><div class="panel-body"><div id="cycleInfo" class="cycle-info"><p class="muted">No cycles detected yet.</p></div><button class="btn-primary full-width" onclick="detectCycles()">DETECT CYCLES</button></div></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- SIMULATOR -->
+    <section class="tab-section" id="tab-simulator">
+      <div class="section-header">
+        <h1>Deadlock Simulator</h1>
+        <p class="subtitle">Create custom scenarios and simulate resource requests step by step</p>
+      </div>
+      <div class="simulator-layout">
+        <div class="panel sim-config-panel">
+          <div class="panel-header"><span>SIMULATION SETUP</span></div>
+          <div class="panel-body">
+            <div class="sim-scenario-btns">
+              <button class="scenario-btn active" data-scenario="manual" onclick="setScenario('manual')">Manual</button>
+              <button class="scenario-btn" data-scenario="circular" onclick="setScenario('circular')">Circular Wait</button>
+              <button class="scenario-btn" data-scenario="hold" onclick="setScenario('hold')">Hold & Wait</button>
+              <button class="scenario-btn" data-scenario="nopreempt" onclick="setScenario('nopreempt')">No Preemption</button>
+            </div>
+            <div id="manualSimControls">
+              <div class="sim-field"><label>Select Process</label><select id="simProcess"></select></div>
+              <div class="sim-field"><label>Action</label><select id="simAction"><option value="request">Request Resource</option><option value="release">Release Resource</option></select></div>
+              <div class="sim-field"><label>Resource</label><select id="simResource"></select></div>
+              <div class="sim-field"><label>Units</label><input type="number" id="simUnits" value="1" min="1" max="10"/></div>
+              <button class="btn-primary full-width" onclick="executeSimStep()">⚡ EXECUTE STEP</button>
+            </div>
+          </div>
+        </div>
+        <div class="sim-main">
+          <div class="panel">
+            <div class="panel-header"><span>SIMULATION TIMELINE</span><div><button class="btn-ghost" onclick="autoSimulate()">▶ AUTO-RUN</button><button class="btn-ghost" onclick="resetSimulation()">↺ RESET</button></div></div>
+            <div class="panel-body"><div id="simTimeline" class="sim-timeline"><div class="timeline-empty">No steps executed yet. Configure and run a simulation above.</div></div></div>
+          </div>
+          <div class="panel">
+            <div class="panel-header"><span>CURRENT STATE MATRIX</span></div>
+            <div class="panel-body"><div id="simStateMatrix" class="sim-state-matrix"><p class="muted">State will appear here after steps are executed.</p></div></div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- RECOVERY -->
+    <section class="tab-section" id="tab-recovery">
+      <div class="section-header">
+        <h1>Deadlock Recovery</h1>
+        <p class="subtitle">Apply recovery strategies to resolve detected deadlocks</p>
+      </div>
+      <div class="recovery-layout">
+        <div class="panel">
+          <div class="panel-header"><span>RECOVERY STRATEGIES</span></div>
+          <div class="panel-body strategies-grid">
+            <div class="strategy-card"><div class="strategy-icon">⚔️</div><div class="strategy-name">Process Termination</div><div class="strategy-desc">Terminate one or all deadlocked processes to release their held resources.</div><div class="strategy-options"><button class="btn-secondary" onclick="recoverTerminateAll()">Terminate ALL</button><button class="btn-secondary" onclick="recoverTerminateOne()">Terminate ONE</button></div></div>
+            <div class="strategy-card"><div class="strategy-icon">🔄</div><div class="strategy-name">Resource Preemption</div><div class="strategy-desc">Forcibly preempt resources from a selected process and reallocate them.</div><div class="strategy-options"><select id="preemptProcess"></select><button class="btn-secondary" onclick="recoverPreempt()">Preempt Resources</button></div></div>
+            <div class="strategy-card"><div class="strategy-icon">⏪</div><div class="strategy-name">Rollback</div><div class="strategy-desc">Roll back processes to a previous safe checkpoint state.</div><div class="strategy-options"><button class="btn-secondary" onclick="recoverRollback()">Rollback to Checkpoint</button></div></div>
+            <div class="strategy-card"><div class="strategy-icon">🏦</div><div class="strategy-name">Prevention (Banker's)</div><div class="strategy-desc">Deny requests that would lead to unsafe states using Banker's algorithm.</div><div class="strategy-options"><button class="btn-primary" onclick="applyBankerPrevention()">Apply Prevention</button></div></div>
+          </div>
+        </div>
+        <div class="panel">
+          <div class="panel-header"><span>RECOVERY LOG</span></div>
+          <div class="panel-body"><div id="recoveryLog" class="event-log"><div class="log-entry info">▶ Recovery module ready. Run Banker's Algorithm first to detect issues.</div></div></div>
+        </div>
+        <div class="panel">
+          <div class="panel-header"><span>BEFORE / AFTER STATE</span></div>
+          <div class="panel-body">
+            <div class="before-after-grid">
+              <div id="beforeState" class="state-box"><div class="state-box-label">BEFORE</div><p class="muted">No recovery executed yet.</p></div>
+              <div class="state-arrow">→</div>
+              <div id="afterState" class="state-box"><div class="state-box-label">AFTER</div><p class="muted">No recovery executed yet.</p></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+  </main>
+
+  <footer class="site-footer">
+    <span>Deadlock Prevention &amp; Recovery Toolkit</span>
+    <span class="footer-sep">|</span>
+    <span>Banker's Algorithm · Resource Allocation Graph · Simulation Engine</span>
+  </footer>
+
+  <script src="js/state.js"></script>
+  <script src="js/banker.js"></script>
+  <script src="js/graph.js"></script>
+  <script src="js/simulator.js"></script>
+  <script src="js/recovery.js"></script>
+  <script src="js/ui.js"></script>
+  <script src="js/presets.js"></script>
+  <script src="js/main.js"></script>
+</body>
+</html>
